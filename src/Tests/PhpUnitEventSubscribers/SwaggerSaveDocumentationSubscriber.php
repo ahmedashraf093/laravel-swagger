@@ -3,6 +3,7 @@
 namespace RonasIT\Support\AutoDoc\Tests\PhpUnitEventSubscribers;
 
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\ParallelTesting;
 use PHPUnit\Event\Application\Finished;
 use PHPUnit\Event\Application\FinishedSubscriber;
 use RonasIT\Support\AutoDoc\Services\SwaggerService;
@@ -13,7 +14,15 @@ final class SwaggerSaveDocumentationSubscriber implements FinishedSubscriber
     {
         $this->createApplication();
 
-        app(SwaggerService::class)->saveProductionData();
+        if ($token = ParallelTesting::token()) {
+            unlink(storage_path("worker_in_progress_{$token}.flag"));
+
+            if (glob(storage_path('worker_in_progress_*.flag')) === false) {
+                app(SwaggerService::class)->saveProductionData();
+            }
+        } else {
+            app(SwaggerService::class)->saveProductionData();
+        }
     }
 
     protected function createApplication(): void
